@@ -1,22 +1,27 @@
+# app.py
 from flask import Flask, request, jsonify
 import requests
 import os
 
 app = Flask(__name__)
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-@app.route('/send', methods=['POST'])
-def send():
+@app.route("/send", methods=["POST"])
+def send_message():
     data = request.get_json()
     message = data.get("message", "No message provided.")
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        return jsonify({"error": "Bot token or chat ID not set"}), 400
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
-    response = requests.post(url, data=payload)
-    return jsonify(response.json())
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message
+    }
+
+    response = requests.post(url, json=payload)
+    return jsonify({"status": "sent", "response": response.json()}), 200
+
+@app.route("/", methods=["GET"])
+def root():
+    return "Relay is active.", 200
