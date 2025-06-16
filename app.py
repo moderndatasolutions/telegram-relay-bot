@@ -1,22 +1,27 @@
 from flask import Flask, request, jsonify
-import requests
-import os
+from bigquery_writer import insert_prediction
+from telegram_sender import send_telegram_message
 
 app = Flask(__name__)
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+@app.route("/")
+def home():
+    return "Bot is live"
 
-@app.route('/send', methods=['POST'])
-def send():
-    data = request.get_json()
-    message = data.get("message", "No message provided.")
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        return jsonify({"error": "Bot token or chat ID not set"}), 400
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
-    response = requests.post(url, data=payload)
-    return jsonify(response.json())
+@app.route("/test-telegram")
+def test_telegram():
+    status, response = send_telegram_message("Hi Andrew 👋 – Telegram is working!")
+    return jsonify({"status": status, "response": response})
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+@app.route("/push-prediction", methods=["POST"])
+def push_prediction():
+    payload = request.json
+    errors = insert_prediction(payload)
+    if errors == []:
+        send_telegram_message("✅ Prediction saved to BigQuery.")
+        return jsonify({"message": "Success", "errors": None})
+    else:
+        return jsonify({"message": "Insert failed", "errors": errors})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
